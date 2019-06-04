@@ -1,5 +1,4 @@
 import sys
-loppumisaika = sys.argv[1]
 def laskeIltalisa(loppumisaika):
     if(float(loppumisaika[:2]) >= 18):
         ylimeneva_tunteina = float(loppumisaika[:2]) - 18
@@ -8,5 +7,9 @@ def laskeIltalisa(loppumisaika):
         return aika
     else:
         return 0
-print (loppumisaika + "jatkuuko")
-#print(laskeIltalisa(loppumisaika))
+
+annettu_parametri = sys.argv[1]
+lopullinen_parametri = annettu_parametri[:1].upper() + annettu_parametri[1:].lower()
+
+
+print(lopullinen_parametri)

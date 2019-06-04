@@ -1,16 +1,17 @@
 import xlrd
 import sys
 import openpyxl
+import os
 from openpyxl import Workbook
 from openpyxl import load_workbook
 
 
-""""
+"""
 Ohjelman tarkoitus on siis hakea kaikki henkilön ARTTU työpäivät työvuorolistasta, joka on 
-tallennettuna samassa muodossa Toukokuu-converted.xlsx tai Kesakuu-converted.xlsx.
-Ohjelmalle annetaan komentoriviparametrina kuukausi, jonka tyovuorot halutaan hakea ja lisätä.
-Komentoriviparametri alkaa isolla kirjaimella. Ohjelmaa ajetaan syöttämällä komentoriville esimerkiksi:
-python3 vuorolistahommat.py Kesakuu
+tallennettuna samassa muodossa kuin seuraavat: Toukokuu-converted.xlsx tai Kesakuu-converted.xlsx.
+Ohjelmalle annetaan komentoriviparametrina kuukausi, jonka tyovuorot halutaan hakea ja lisätä. 
+Ohjelmaa ajetaan syöttämällä komentoriville esimerkiksi:
+python3 vuorolistahommat.py kesakuu
 Ohjelma vaatii toimiakseen
 -Kaikki käsiteltävät tiedostot sijaitsevat samassa hakemistossa ohjelman kanssa.
 -Tyovuorolista on muodossa Kuukausi-converted.xlsx
@@ -49,24 +50,35 @@ def laskeIltalisa(loppumisaika):
         else:
                 return 0  
 
-tyovuorolistan_nimi = sys.argv[1] + "-converted.xlsx"
+"""
+Käsitellään komentoriviparametri sellaiseen muotoon, että saadaan haettua ja aktivoitua oikea tyovuorolista. Haetaan ja aktivoidaan myös tyoaikakortti.
+Tyovuorolistasta käsitellään alkukuu ja loppukuu erikseen, koska ne ovat eri taulukoissa. Tyoaikakortista käsitellään vain ensimmäistä taulukkoa.
+"""
+
+annettu_parametri = sys.argv[1]
+lopullinen_parametri = annettu_parametri[:1].upper() + annettu_parametri[1:].lower()
+tyovuorolistan_nimi = "Tyovuorolistat/" + lopullinen_parametri + "-converted.xlsx"
 tyovuorolista = xlrd.open_workbook(tyovuorolistan_nimi)
-tyoaikakortti = load_workbook('Tyoaikakortti.xlsx')
+tyoaikakortti = load_workbook('Tyoaikakortit/Tyoaikakortti.xlsx')
 tyoaikakortin_taulukko = tyoaikakortti["tunnit"]
-#on olemassa alkukuu ja loppukuu erikseen, koska ne ovat eri sheeteilla
 alkukuu = tyovuorolista.sheet_by_index(0)
 loppukuu = tyovuorolista.sheet_by_index(1)
 
-#aivan ensimmaiseksi etsitaan kaikki paivat ja lisataan ne tyoaikakorttiin
+"""
+Seuraavaksi etsitään kaikki työvuorolistan päivät, jolloin on mahdollista olla töitä ja lisätään ne työaikakorttiin. 
+Työaikakortista pitää etsiä myös ensimmäistä työvuorolistan päivää vastaava solu, josta pitää löytää y-koordinaatti, koska x-koordinaatti on aina 2
+Kun on etsitty kyseinen solu, voidaan lisätä työvuorolistaan kaikki päivät.
+"""
+#etsitaan kaikki paivat ja lisataan ne tyoaikakorttiin
 paivat = []
 viikonpaiva1_vuorolistassa = alkukuu.cell_value(0,1)
-#etsitaan y-koordinaatti työaikakortin ensimmäisestä tyopäivästa, koska x- koordinaatti on aina 1
+#etsitaan y-koordinaatti työaikakortin ensimmäisestä tyopäivästa, koska x- koordinaatti on aina 2
 viikonpaivaY = int
 for i in range(9, 16):
         if(tyoaikakortin_taulukko.cell(row=i, column=2).value == viikonpaiva1_vuorolistassa):
                 viikonpaivaY = i
 
-#etsitaan kaikki tyopaivat kuulta
+#etsitaan kaikki kuun päivät
 for i in range (1, alkukuu.ncols):
         paiva1 = alkukuu.cell_value(1, i)
         paivat.append(paiva1)
@@ -80,6 +92,11 @@ for i in range (viikonpaivaY, viikonpaivaY + len(paivat)):
         taytettava_viikonpaiva.value = paivat[indeksi]
         indeksi += 1
 
+"""
+Etsitään käsiteltävän henkilön nimeä (ARTTU) vastaava solu työvuorolistasta, jotta päästään käsiksi kyseisen henkilön kuukauden työvuoroihin.
+Kyseisessä etsinnässä tiedetään MYÖS, että x-koordinaatti on aina 0. Kun solu tiedetään, voidaan etsiä kaikki kyseisen henkilön työvuorot
+ja lisätä ne suoraan työaikakorttiin. Etsintä pitää tehdä erikseen alkukuulle ja loppukuulle. 
+"""
 
 #otetaan kasittelyyn alkukuun tyoajat
 print("Alkukuun vuorot:")
@@ -90,7 +107,7 @@ for i in range (0, alkukuu.nrows):
         if(koordinaatti1 == "ARTTU"):
                 arttuY1 = i
 
-#etsitaan tyotunnit samalla myos lisataan suoraan tyoaikakorttiin
+#etsitaan tyotunnit ja samalla myos lisataan suoraan tyoaikakorttiin
 for i in range(1, alkukuu.ncols):
         viikonpaiva1 = alkukuu.cell_value(0, i)
         day1 = alkukuu.cell_value(1, i)
@@ -101,7 +118,7 @@ for i in range(1, alkukuu.ncols):
                 print(viikonpaiva1 + " " + day1 + " " + cell1)
                 #lisataan tyoaikakorttiin jos ajankohta tasmaa
                 for j in range(viikonpaivaY, viikonpaivaY + len(paivat)):
-                #tarkistetaan onko oikea paiva
+                #käsitellään lisäys jos päivä on oikea
                         if(tyoaikakortin_taulukko.cell(row=j, column=3).value == day1):
                                 tyoaikakortin_taulukko.cell(row=j, column=4).value = alkamisaika 
                                 tyoaikakortin_taulukko.cell(row=j, column=6).value = loppumisaika
@@ -114,12 +131,13 @@ for i in range(1, alkukuu.ncols):
 #otetaan kasittelyyn loppukuun tyoajat
 print("Loppukuun vuorot:")
 #etsitaan y-koordinaatti
-arttuY2 = None
+arttuY2 = int
 for i in range (0, loppukuu.nrows):
         koordinaatti2 = loppukuu.cell_value(i, 0)
         if(koordinaatti2 == "ARTTU"):
                 arttuY2 = i
-#etsitaan tyotunnit
+
+#etsitaan tyotunnit ja samalla myös lisätään ne työaikakorttiin
 for i in range (1, loppukuu.ncols):
         viikonpaiva2 = loppukuu.cell_value(0, i)
         day2 = loppukuu.cell_value(1, i)
@@ -131,7 +149,7 @@ for i in range (1, loppukuu.ncols):
                 print(viikonpaiva2 + " " + day2 + " " + cell2)
                 #lisataan tyoaikakorttiin jos ajankohta tasmaa
                 for j in range(viikonpaivaY, viikonpaivaY + len(paivat)):
-                #tarkistetaan onko oikea paiva
+                #käsitellään lisäys jos päivä on oikea
                         if(tyoaikakortin_taulukko.cell(row=j, column=3).value == day2):
                                 tyoaikakortin_taulukko.cell(row=j, column=4).value = alkamisaika
                                 tyoaikakortin_taulukko.cell(row=j, column=6).value = loppumisaika
@@ -140,7 +158,8 @@ for i in range (1, loppukuu.ncols):
                                 if(viikonpaiva2 == "su"):
                                         tyoaikakortin_taulukko.cell(row=j, column=14).value = laskeTyoaika(alkamisaika, loppumisaika)
 
-#Lopuksi tallennetaan uudeksi tiedostoksi
-tallennettava_tiedosto = "Tyoaikakortti_" + sys.argv[1] + "_valmis.xlsx"
+#Lopuksi tallennetaan uudeksi tiedostoksi ja avataan tiedosto
+tallennettava_tiedosto = "Tyoaikakortit/Tyoaikakortti_" + lopullinen_parametri + "_valmis.xlsx"
 tyoaikakortti.save(tallennettava_tiedosto)
 print("Tyoajat on lisätty tiedostoon " + tallennettava_tiedosto)
+os.system("open " + tallennettava_tiedosto)
