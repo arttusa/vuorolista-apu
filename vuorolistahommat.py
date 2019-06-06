@@ -5,7 +5,7 @@ import os
 from openpyxl import Workbook
 from openpyxl import load_workbook
 
-
+# Tällä hetkellä ongelmakohtana on vakituisten vuorot koska soluissa esiintyy tyhjän sijasta vp* 
 """
 Ohjelman tarkoitus on siis hakea kaikki henkilön ARTTU työpäivät työvuorolistasta, joka on 
 tallennettuna samassa muodossa kuin seuraavat: Toukokuu-converted.xlsx tai Kesakuu-converted.xlsx.
